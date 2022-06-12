@@ -3,7 +3,7 @@
     <http:listener-config name="battlesnake-api-httpListenerConfig">
         <http:listener-connection host="0.0.0.0" port="8081" />
     </http:listener-config>
-    <apikit:config name="battlesnake-api-config" api="api/battlesnake-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <apikit:config name="battlesnake-api-config" api="resource::74b98629-54d5-43f4-a349-54ab11eb7d24:battlesnake-api:1.0.0:raml:zip:battlesnake-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
     <configuration-properties doc:name="Configuration properties" doc:id="3828176e-9ddb-46aa-a8cf-e6b42e24bf3d" file="application.yaml" />
 	<flow name="battlesnake-api-main">
         <http:listener config-ref="battlesnake-api-httpListenerConfig" path="/api/*">

@@ -17,8 +17,24 @@ var myNeckLocation = neck match {
 	else -> ''
 }
 
+var moveInfo = moves map (move) -> 
+	{
+		move: move,
+		location: 	move match {
+			case "up" -> head update { case y at .y -> y + 1 }  
+			case "down" -> head update { case y at .y -> y - 1 }
+			case "left" -> head update { case x at .x -> x - 1 }
+			case "right" -> head update { case x at .x -> x + 1 }
+		}
+	}
+
 // TODO: Step 1 - Don't hit walls.
 // Use information from `board` and `head` to not move beyond the game board.
+fun isWall(moveInfo) = 
+	moveInfo.location.x < 0 or
+	moveInfo.location.y < 0 or
+	moveInfo.location.x >= board.width or
+	moveInfo.location.y >= board.height
 
 // TODO: Step 2 - Don't hit yourself.
 // Use information from `body` to avoid moves that would collide with yourself.
@@ -32,10 +48,12 @@ var myNeckLocation = neck match {
 
 
 // Find safe moves by eliminating neck location and any other locations computed in above steps
-var safeMoves = moves - myNeckLocation // - remove other dangerous locations
+var safeMoves = moveInfo
+	filter ( ($.move != myNeckLocation) and ! isWall($))
+	map $.move
 
 // Next random move from safe moves
-var nextMove = safeMoves[randomInt(sizeOf(safeMoves))]
+var nextMove = log(safeMoves)[log(randomInt(sizeOf(safeMoves)))]
 
 ---
 {

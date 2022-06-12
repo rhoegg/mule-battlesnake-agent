@@ -1,8 +1,8 @@
 battlesnake:
   config:
     "apiversion": "1"
-    "author": "mmsonline"
-    "color" : "#888888"
-    "head" : "default"
-    "tail" : "default"
+    "author": "rhoegg"
+    "color" : "#d82000"
+    "head" : "pixel"
+    "tail" : "pixel"
     "version" : "0.0.1-beta"
