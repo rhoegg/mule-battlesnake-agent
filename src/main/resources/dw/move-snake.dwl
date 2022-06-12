@@ -38,6 +38,8 @@ fun isWall(moveInfo) =
 
 // TODO: Step 2 - Don't hit yourself.
 // Use information from `body` to avoid moves that would collide with yourself.
+fun collidesWithMyTail(moveInfo) =
+	body contains moveInfo.location
 
 // TODO: Step 3 - Don't collide with others.
 // Use information from `payload` to prevent your Battlesnake from colliding with others.
@@ -49,7 +51,10 @@ fun isWall(moveInfo) =
 
 // Find safe moves by eliminating neck location and any other locations computed in above steps
 var safeMoves = moveInfo
-	filter ( ($.move != myNeckLocation) and ! isWall($))
+	filter ( ($.move != myNeckLocation) 
+		and ! isWall($) 
+		and ! collidesWithMyTail($)
+	)
 	map $.move
 
 // Next random move from safe moves
