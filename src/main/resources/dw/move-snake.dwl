@@ -1,4 +1,5 @@
 %dw 2.0
+import * from dw::core::Arrays
 output application/json
 
 var body = payload.you.body
@@ -43,6 +44,8 @@ fun collidesWithMyTail(moveInfo) =
 
 // TODO: Step 3 - Don't collide with others.
 // Use information from `payload` to prevent your Battlesnake from colliding with others.
+fun collidesWithOtherSnake(moveInfo) =
+	board.snakes some ($.body contains moveInfo.location)
 
 // TODO: Step 4 - Find food.
 // Use information in `payload` to seek out and find food.
@@ -54,6 +57,7 @@ var safeMoves = moveInfo
 	filter ( ($.move != myNeckLocation) 
 		and ! isWall($) 
 		and ! collidesWithMyTail($)
+		and ! collidesWithOtherSnake($)
 	)
 	map $.move
 
