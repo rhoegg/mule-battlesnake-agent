@@ -46,6 +46,9 @@ fun collidesWithMyTail(moveInfo) =
 // Use information from `payload` to prevent your Battlesnake from colliding with others.
 fun collidesWithOtherSnake(moveInfo) =
 	board.snakes some ($.body contains moveInfo.location)
+	
+fun collidesWithHazards(moveInfo) =
+	log(board.hazards) contains log(moveInfo.location)
 
 // TODO: Step 4 - Find food.
 // Use information in `payload` to seek out and find food.
@@ -55,10 +58,12 @@ fun collidesWithOtherSnake(moveInfo) =
 // Find safe moves by eliminating neck location and any other locations computed in above steps
 var safeMoves = moveInfo
 	filter ( ($.move != myNeckLocation) 
-		and ! isWall($) 
-		and ! collidesWithMyTail($)
-		and ! collidesWithOtherSnake($)
-	)
+		and ! (
+			isWall($) 
+			or collidesWithMyTail($)
+			or collidesWithOtherSnake($)
+			or collidesWithHazards($)
+	))
 	map $.move
 
 // Next random move from safe moves

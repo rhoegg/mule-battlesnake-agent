@@ -3,6 +3,6 @@ battlesnake:
     "apiversion": "1"
     "author": "rhoegg"
     "color" : "#d82000"
-    "head" : "pixel"
-    "tail" : "pixel"
+    "head" : "iguana"
+    "tail" : "iguana"
     "version" : "0.0.1-beta"

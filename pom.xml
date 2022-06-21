@@ -76,7 +76,7 @@
 		<dependency>
 			<groupId>74b98629-54d5-43f4-a349-54ab11eb7d24</groupId>
 			<artifactId>battlesnake-api</artifactId>
-			<version>1.0.0</version>
+			<version>1.0.1</version>
 			<classifier>raml</classifier>
 			<type>zip</type>
 		</dependency>
