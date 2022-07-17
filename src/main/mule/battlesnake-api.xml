@@ -142,41 +142,70 @@ import observe from dw::Strategy
 ---
 {
 	episode: payload.game,
-	observation: observe(payload.you, payload.board)
+	nnState: vars.nnState,
+	turns: [
+		{
+			board: payload.board,
+			turn: payload.turn,
+			observation: observe(payload.you, payload.board)
+		}
+	]
 }]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<os:store doc:name="init episode" doc:id="b70af828-dbd4-4d34-ad18-9e4576088944" key="#[payload.episode.id]" failIfPresent="true" objectStore="episodesObjectStore"/>
+		<os:store doc:name="init episode" doc:id="b70af828-dbd4-4d34-ad18-9e4576088944" key="#[payload.episode.id]" objectStore="episodesObjectStore"/>
     </flow>
     <flow name="post:\move:application\json:battlesnake-api-config">
-        <logger level="INFO" message="#['Move Game $(payload.game.id)']" />
-		<logger level="INFO" doc:name="Logger" doc:id="1423365b-9bc2-4e2e-9f28-a85fa84de445" message="#[payload]"/>
-		<os:retrieve doc:name="nnState" doc:id="d5c9acd6-9688-4722-bb81-b26825452e9d" key="nnState" target="nnState"/>
-		<ee:transform doc:name="Move" doc:id="54a59f57-b3b2-49c9-9df1-ea5de079e976" >
-			<ee:message >
+        <logger level="INFO" message="#['Move Game $(payload.game.id)']" doc:name="INFO" category="mule-battlesnake-agent.move"/>
+		<logger level="DEBUG" doc:name="DEBUG" doc:id="1423365b-9bc2-4e2e-9f28-a85fa84de445" message="#[payload]" category="mule-battlesnake-agent.move"/>
+		<set-variable value="#[payload.game.id]" doc:name="episodeId" doc:id="812ab9b6-e852-4a24-ba38-43e23571a9e1" variableName="episodeId"/>
+		<os:retrieve doc:name="episode" doc:id="383f97a3-f881-4d30-bf88-c547d0a1f097" key="#[vars.episodeId]" objectStore="episodesObjectStore" target="episode"/>
+		<set-variable value="#[vars.episode.nnState]" doc:name="nnState" doc:id="1a834600-ee8c-4d5d-9a66-3cb502700755" variableName="nnState"/>
+		<set-variable value="#[import * from dw::Strategy --- flatten(flatten(observe(payload.you, payload.board)))]" doc:name="observation" doc:id="382fd21d-fa1a-4627-8aca-b26a98706896" variableName="observation"/>
+		<set-variable value="#[%dw 2.0&#10;import * from dw::Strategy&#10;&#10;---&#10;forwardANN(vars.observation, vars.nnState)]" doc:name="neuralNetOutput" doc:id="1bc5f8fa-23f5-41f8-9eca-469183925175" variableName="neuralNetOutput"/>
+		<set-variable value='#[%dw 2.0&#10;import * from dw::Strategy&#10;&#10;var epsilon = 0.01&#10;fun choose(actions) = &#10;	if (random() &lt; epsilon)&#10;		actions[randomInt(sizeOf(actions))].action&#10;	else&#10;		(actions maxBy $.weight).action&#10;&#10;&#10;var weightedActions = (["forward", "left", "right"] zip vars.neuralNetOutput.finalLayer) map {action: $[0], weight: $[1]}&#10;---&#10;choose(weightedActions)]' doc:name="action" doc:id="349ac202-cab2-42df-90fd-dc7acf940c3d" variableName="action"/>
+		<os:store doc:name="episode" doc:id="ef59ce45-ac82-4c74-bc6c-87d7472dde68" key="#[vars.episodeId]" objectStore="episodesObjectStore">
+			<os:value><![CDATA[#[output application/json --- vars.episode update {
+	case turns at .turns -> turns << {
+		board: payload.board,
+		turn: payload.turn,
+		observation: vars.observation,
+		nn: vars.neuralNetOutput,
+		action: vars.action
+	}
+}]]]></os:value>
+		</os:store>
+		<ee:transform doc:name="Move" doc:id="54a59f57-b3b2-49c9-9df1-ea5de079e976">
+			<ee:message>
 				<ee:set-payload resource="dw/move-snake.dwl" />
 			</ee:message>
 		</ee:transform>
+		<logger level="DEBUG" doc:name="DEBUG" doc:id="48a998cb-1dcf-45f3-a29d-5a5bbc4390d9" message="#[payload]" category="mule-battlesnake-agent.move"/>
     </flow>
     <flow name="post:\end:application\json:battlesnake-api-config">
-        <logger level="INFO" message="#['End Game $(payload.game.id)']" />
-		<logger level="INFO" doc:name="Logger" doc:id="e9f0dd37-688a-4c17-9213-f7139eef0e9b" message="#[payload]"/>
-		<os:retrieve doc:name="nnState" doc:id="99fb1838-6ae6-410a-88d9-498b7788d0fc" key="nnState" target="nnState">
-			<os:default-value ><![CDATA[#[{}]]]></os:default-value>
+        <logger level="INFO" message="#['End Game $(payload.game.id)']" doc:name="INFO" category="mule-battlesnake-agent.end"/>
+		<logger level="DEBUG" doc:name="DEBUG" doc:id="e9f0dd37-688a-4c17-9213-f7139eef0e9b" message="#[payload]" category="mule-battlesnake-agent.end"/>
+		<async doc:name="Async" doc:id="72889f1d-2513-4a32-b883-1c9a50a81d89" >
+			<set-variable value="#[import * from dw::Strategy&#10;---&#10;calculateReward(payload)]" doc:name="reward" doc:id="cfa69b4b-1fff-4016-85da-82392b221e59" variableName="reward" />
+			<os:retrieve doc:name="nnState" doc:id="99fb1838-6ae6-410a-88d9-498b7788d0fc" key="nnState" target="nnState">
+			<os:default-value><![CDATA[#[{}]]]></os:default-value>
 		</os:retrieve>
-		<ee:transform doc:name="end episode and learn" doc:id="0d6d14e7-1603-43f9-8521-c28a3150692d" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/java
----
-{
-}]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-		<os:store doc:name="nnState" doc:id="cd69d0f4-1652-4c01-91c2-0f159adee40d" key="nnState">
-			<os:value ><![CDATA[#[{}]]]></os:value>
-		</os:store>
+			<os:retrieve doc:name="episode" doc:id="3ed7c79b-b94a-489d-b4ca-49ad5eda27d1" key="#[payload.game.id]" objectStore="episodesObjectStore" target="episode"/>
+			<logger level="DEBUG" doc:name="DEBUG" doc:id="ccd792d0-5f82-4343-80fe-fc80d0a55efe" message="#[payload]" category="mule-battlesnake-agent.end" />
+			<flow-ref doc:name="learnFlow" doc:id="f4470717-b79c-438a-837c-45713a0827e3" name="learnFlow"/>
+		</async>
     </flow>
+	<flow name="learnFlow" doc:id="b8f26422-d165-480d-8353-f7676f39fd6d" >
+		<logger level="INFO" doc:name="INFO" doc:id="b0e2e690-9a37-47e7-bc94-a0487b05e98f" message="Learning episode #[payload.episode.id]" category="mule-battlesnake-agent.learn"/>
+		<logger level="INFO" doc:name="iterate episode turns in reverse, reducing learning rate" doc:id="44f96392-e87b-4bd2-9c8b-5b1a397c02c8" />
+		<foreach doc:name="For Each" doc:id="28993cc6-97b8-4316-ba7a-28e57eb5def7" >
+			<logger level="INFO" doc:name="iterate layers in reverse, calculating error signals" doc:id="e5cde306-36fd-420f-b8c2-84825b1d57d9" />
+			<logger level="INFO" doc:name="weight updates" doc:id="e1615a92-2be0-49eb-87d9-ec3e1ea104a3" />
+		</foreach>
+		<os:store doc:name="nnState" doc:id="f8f827e9-c1d6-4419-8411-89aec2495b27" key="nnState">
+			<os:value ><![CDATA[#[vars.nnState // with weight updates applied]]]></os:value>
+		</os:store>
+	</flow>
 
 
 </mule>

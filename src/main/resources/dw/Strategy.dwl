@@ -1,5 +1,8 @@
-import some from dw::core::Arrays
+import drop, some from dw::core::Arrays
 import E from dw::util::Math
+
+fun sigmoid(vector) =
+	(vector map (x) -> pow(E, x)) map (ex) -> (ex / (1 + ex))
 
 fun orient(you, board) = do {
 	var body = you.body
@@ -11,7 +14,7 @@ fun orient(you, board) = do {
 		case neck if neck.x > head.x -> "right" //my neck is on the right of my head
 		case neck if neck.y < head.y -> "down" //my neck is below my head
 		case neck if neck.y > head.y -> "up"	//my neck is above my head
-		else -> ''
+		else -> "none"
 	}
 	
 	var aheadDirection = myNeckLocation match {
@@ -19,7 +22,7 @@ fun orient(you, board) = do {
 		case "right" -> "left"
 		case "up" -> "down"
 		case "down" -> "up"
-		else -> ""
+		else -> "none"
 	}
 	
 	var leftDirection = myNeckLocation match {
@@ -27,7 +30,7 @@ fun orient(you, board) = do {
 		case "right" -> "down"
 		case "up" -> "right"
 		case "down" -> "left"
-		else -> ""
+		else -> "none"
 	}
 	
 	var rightDirection = myNeckLocation match {
@@ -35,7 +38,7 @@ fun orient(you, board) = do {
 		case "right" -> "up"
 		case "up" -> "left"
 		case "down" -> "right"
-		else -> ""
+		else -> "none"
 	}
 	---
 	{
@@ -85,10 +88,31 @@ fun observe(you, board) = do {
 	observation.vision + [observation.facts.health, observation.facts.length, 1] // 1 = bias
 }
 
-fun sigmoid(vector) =
-	(vector map (x) -> pow(E, x)) map (ex) -> (ex / (1 + ex))
+fun outOfBounds(you, board) =
+	(you.head.x < 0) 
+	or (you.head.y < 0) 
+	or (you.head.x >= board.width) 
+	or (you.head.y >= board.height)
+
+fun collidedWithSelf(you) =
+	(you.body drop 1) contains you.head
+
+fun collidedWithHazards(you, board) =
+	board.hazards contains you.head
+
+fun collidedWithSnake(you, board) =
+	flatten(board.snakes filter ($.id != you.id) map $.body) contains you.head
+
+fun calculateReward(gameState) =
+	gameState match {
+		case gameState if (gameState.you.health == 0) -> -1
+		case gameState if (outOfBounds(gameState.you, gameState.board)) -> -1
+		case gameState if (collidedWithSelf(gameState.you)) -> -1
+		case gameState if (collidedWithSnake(gameState.you, gameState.board)) -> -1 // counting all head on collisions as a loss FIXME
+		else -> 0
+	}
 	
-fun forwardANN(inputs, weights) = do {
+fun forwardANN(inputs, weights) = do { // add bias
 	var inputLayer = sigmoid(inputs)
 	var outputL1 = sigmoid(
 		weights.layer1 map (nodeL1) -> 
@@ -99,7 +123,13 @@ fun forwardANN(inputs, weights) = do {
 			sum((outputL1 zip nodeL2.weights) map ($[0] * $[1]))
 		)
 	---
-	// no sigmoid for action layer
-	weights.actions map (actionNode) ->
-		sum((outputL2 zip actionNode.weights) map ($[0] * $[1]))
+	{
+		inputLayer: inputLayer,
+		layer1: outputL1,
+		layer2: outputL2,
+		finalLayer: 	// no sigmoid for action layer
+			weights.actions map (actionNode) ->
+				sum((outputL2 zip actionNode.weights) map ($[0] * $[1]))
+				
+	}
 }

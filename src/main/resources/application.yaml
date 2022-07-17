@@ -1,12 +1,13 @@
 battlesnake:
   config:
-    "apiversion": "1"
-    "author": "rhoegg"
-    "color" : "#1836dc"
-    "head" : "smart-caterpillar"
-    "tail" : "round-bum"
-    "version" : "0.0.1-beta"
+    apiversion: "1"
+    author: "rhoegg"
+    color: "#1836dc"
+    "head": "smart-caterpillar"
+    tail: "round-bum"
+    version : "0.0.1-beta"
 neuralNet:
   input: "25" # 11 * 2 + 2 + bias
   layer1: "8"
   layer2: "5"
+  gamma: "0.97"
